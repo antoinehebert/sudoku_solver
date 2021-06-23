@@ -15,7 +15,7 @@ use std::time::Instant;
 // Types
 //
 type Cell = String; // Row-Column id, e.g.: A1.
-type CellValues = Vec<String>; // Possible values for a cell.
+type CellValues = Vec<u8>; // Possible values for a cell.
 
 type Group = Vec<Cell>; // A row, column or 3x3 sub-grid.
 type Groups = Vec<Group>;
@@ -27,7 +27,7 @@ type Grid = HashMap<Cell, CellValues>;
 //
 // Constants
 //
-static DIGITS: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+static DIGITS: [u8; 9] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 static COLUMNS: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 static ROWS: [&str; 9] = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
 
@@ -171,7 +171,8 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<Grid> {
     // Start with all possible values
     let mut result = Grid::new();
 
-    let digits: CellValues = DIGITS.iter().map(|s| s.to_string()).collect();
+    let valid_digit_strings: Vec<String> = DIGITS.iter().map(|i| i.to_string()).collect();
+    let digits: CellValues = DIGITS.iter().cloned().collect();
 
     // Fill grid with all digits first.
     for square in &state.cells {
@@ -179,10 +180,17 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<Grid> {
     }
 
     for (index, square) in state.cells.iter().enumerate() {
-        let digit = &grid_str.chars().nth(index).unwrap().to_string();
+        let digit = grid_str.chars().nth(index).expect("grid_str has index");
 
-        if digits.contains(digit) {
-            if !assign(&mut result, square, digit, state) {
+        if valid_digit_strings.contains(&digit.to_string()) {
+            if !assign(
+                &mut result,
+                square,
+                digit
+                    .to_digit(10)
+                    .expect("digit is a digit at this point...") as u8,
+                state,
+            ) {
                 return None;
             }
         }
@@ -192,11 +200,14 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<Grid> {
 }
 
 /// Eliminate all the other `digit` from `grid[square]` and propagate.
-fn assign(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> bool {
+fn assign(grid: &mut Grid, cell: &Cell, digit: u8, state: &State) -> bool {
     let mut other_digits = grid[cell].clone();
-    other_digits.retain(|d| d != digit);
+    other_digits.retain(|&d| d != digit);
 
-    if other_digits.iter().all(|d| eliminate(grid, cell, d, state)) {
+    if other_digits
+        .iter()
+        .all(|&d| eliminate(grid, cell, d, state))
+    {
         true
     } else {
         false
@@ -204,13 +215,13 @@ fn assign(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> bool {
 }
 
 /// Eliminate `digit` from `grid[square]` and propagate.
-fn eliminate(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> bool {
+fn eliminate(grid: &mut Grid, cell: &Cell, digit: u8, state: &State) -> bool {
     // Eliminate!
-    if !grid[cell].contains(digit) {
+    if !grid[cell].contains(&digit) {
         return true; // Already eliminated.
     }
 
-    grid.get_mut(cell).unwrap().retain(|d| d != digit);
+    grid.get_mut(cell).unwrap().retain(|&d| d != digit);
 
     if grid[cell].len() == 0 {
         return false;
@@ -218,7 +229,7 @@ fn eliminate(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> boo
 
     if grid[cell].len() == 1 {
         // Found a match, eliminate from peers.
-        let d = &grid[cell][0].clone();
+        let d = grid[cell][0];
         // assert!(state.peers[cell].len() > 0); // remove!
         if !state.peers[cell]
             .iter()
@@ -232,7 +243,7 @@ fn eliminate(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> boo
     for unit in &state.cell_groups[cell] {
         let mut dplaces = Vec::new();
         for s in unit {
-            if grid[s].contains(digit) {
+            if grid[s].contains(&digit) {
                 dplaces.push(s);
             }
         }
@@ -306,15 +317,15 @@ fn format_grid(grid: &Grid, state: &State) -> String {
 
             let cell = format!("{}{}", row.to_string(), col.to_string());
 
+            let cell_values = (&grid[&cell])
+                .into_iter()
+                .map(|i| i.to_string())
+                .collect::<Vec<_>>()
+                .join("");
             // Would ideally use `{^<number>}` formatting instead of
             // `center_string`, but I don't think you can set the number
             // dynamically...
-            write!(
-                &mut result,
-                "{}",
-                center_string(&grid[&cell].join(""), width)
-            )
-            .unwrap();
+            write!(&mut result, "{}", center_string(&cell_values, width)).unwrap();
         }
 
         write!(&mut result, "|\n").unwrap();
@@ -351,7 +362,7 @@ fn search(grid: &Grid, state: &State) -> Option<Grid> {
         .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
         .unwrap();
 
-    for digit in digits.iter() {
+    for &digit in digits.iter() {
         let mut new_grid = grid.clone();
         if assign(&mut new_grid, square, digit, state) {
             if let Some(result) = search(&new_grid, state) {
