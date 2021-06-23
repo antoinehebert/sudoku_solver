@@ -4,7 +4,10 @@ fn main() {
     let state = init_stuff();
     let grid = solve(&GRID2, &state);
     match grid {
-        Some(g) => display(&g, &state),
+        Some(g) => {
+            println!("Solution:");
+            display(&g, &state);
+        }
         None => println!("no solution :("),
     }
 }
@@ -170,8 +173,6 @@ fn eliminate(
     grid.get_mut(square).unwrap().retain(|d| d != digit);
 
     if grid[square].len() < 1 {
-        // TODO: Propagate errors.
-        println!("Contradiction. Removed the last digit from {}", square);
         return None;
     } else if grid[square].len() == 1 {
         // Found a match, eliminate from peers.
@@ -190,11 +191,10 @@ fn eliminate(
             }
         }
         if dplaces.len() == 0 {
-            println!("Contradiction, no place for {}", digit);
             return None;
         } else if dplaces.len() == 1 {
             // Digit can only be in one place in unit, assign it here.
-            grid = assign(&grid, dplaces[0], digit, state).unwrap();
+            grid = assign(&grid, dplaces[0], digit, state)?;
         }
     }
 
@@ -221,7 +221,6 @@ fn display(grid: &UnitsForSquare, state: &State) {
     // 9 digits + 2 spaces on each side.
     let mut width = state.squares.iter().map(|s| grid[s].len()).max().unwrap();
     width += 2; // Padding
-    dbg!(width);
 
     let mut line = vec!["-".repeat(3 * width); 3].join("+");
     line = format!("+{}+", line);
@@ -271,8 +270,7 @@ fn search(grid: &Option<UnitsForSquare>, state: &State) -> Option<UnitsForSquare
                 .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
                 .unwrap();
             for digit in digits.into_iter() {
-                println!("assigning {}: {}", square, digit);
-                if let Some(g) = assign(&new_grid, square, digit, state) {
+                if let Some(g) = search(&assign(&new_grid, square, digit, state), state) {
                     return Some(g);
                 }
             }
@@ -312,7 +310,6 @@ mod tests {
         assert_eq!(game.squares.len(), 81);
         assert_eq!(game.unitlist.len(), 27);
         for s in game.squares {
-            dbg!(&game.unitlist);
             assert_eq!(game.units[&s].len(), 3);
             assert_eq!(game.peers[&s].len(), 20);
         }
