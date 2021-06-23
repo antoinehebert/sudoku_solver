@@ -1,6 +1,12 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
+// TODO:
+//     - Make state singleton
+//     - Make search multithread?
+//     - We clone everything for simplicity, could we share elements to be more
+//       efficient?
+
 fn main() {
     let now = SystemTime::now();
     let state = init_stuff();
@@ -125,6 +131,7 @@ fn init_stuff() -> State {
 fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
     println!("Parsing {}\n", grid_str);
     if grid_str.len() != 81 {
+        println!("ERROR: Invalid grid");
         return None;
     }
 
@@ -275,6 +282,8 @@ fn search(grid: &Option<UnitsForSquare>, state: &State) -> Option<UnitsForSquare
                 .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
                 .unwrap();
             for digit in digits.into_iter() {
+                // display(&grid, &state);
+                // println!("digging for {}: {}", square, digit);
                 if let Some(g) = search(&assign(&new_grid, square, digit, state), state) {
                     return Some(g);
                 }
@@ -294,6 +303,9 @@ const GRID2: &str =
     "4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......";
 const HARD_GRID1: &str =
     ".....6....59.....82....8....45........3........6..3.54...325..6..................";
+
+const HARD_GRID2: &str =
+    ".....5.8....6.1.43..........1.5........1.6...3.......553.....61........4.........";
 
 #[cfg(test)]
 mod tests {
