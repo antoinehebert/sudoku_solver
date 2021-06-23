@@ -112,25 +112,25 @@ fn init_stuff() -> State {
     }
 }
 
-fn parse_grid(grid: &str, state: &State) -> Option<UnitsForSquare> {
-    if grid.len() != 81 {
+fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
+    println!("Parsing {}\n", grid_str);
+    if grid_str.len() != 81 {
         return None;
     }
 
     // Start with all possible values
     let mut result = UnitsForSquare::new();
 
+    // Fill grid with all digits first.
     for square in &state.squares {
         result.insert(square.clone(), state.digits.clone());
     }
 
     for (index, square) in state.squares.iter().enumerate() {
-        let digit = &grid.chars().nth(index).unwrap().to_string();
+        let digit = &grid_str.chars().nth(index).unwrap().to_string();
 
         if state.digits.contains(digit) {
             assign(&mut result, square, digit, state);
-        } else {
-            result.insert(square.clone(), state.digits.clone());
         }
     }
 
@@ -189,7 +189,7 @@ fn display(grid: &UnitsForSquare, state: &State) {
     let line = vec!["-".repeat(3 * width); 3].join("+");
     for (row_index, row) in state.rows.iter().enumerate() {
         for (col_index, col) in state.cols.iter().enumerate() {
-            // TODO: use dynamic width.
+            // TODO: Use dynamic width.
             print!("{:^11}", grid[&concat(&row, &col)].join(""));
 
             if (col_index + 1) % 3 == 0 {
