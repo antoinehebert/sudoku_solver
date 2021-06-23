@@ -34,6 +34,7 @@ fn main() {
     }
 }
 
+// ("AB", "12") -> ["A1", "A2", "B1", "B2"]
 fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     for i in a {
@@ -45,12 +46,13 @@ fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
     result
 }
 
-// TODO: USE THIS?
-type Square = String;
-type Units = Vec<String>;
-type UnitsList = Vec<Units>;
-type UnitlistsForSquare = HashMap<String, UnitsList>;
-type UnitsForSquare = HashMap<String, Units>;
+type Square = String; // Row-Column id, e.g.: A1.
+type SquareResult = Vec<String>; // Possible values for a square.
+
+type UnitsList = Vec<SquareResult>; // A row, column or 3x3 square.
+
+type UnitlistsForSquare = HashMap<Square, UnitsList>;
+type UnitsForSquare = HashMap<Square, SquareResult>;
 
 #[derive(Debug)]
 struct State {
@@ -112,7 +114,7 @@ fn init_stuff() -> State {
     let mut peers = UnitsForSquare::new();
     for s in &squares {
         // flatten
-        let mut new_units: Units = units
+        let mut new_units: SquareResult = units
             .get(s)
             .cloned()
             .unwrap()
