@@ -2,8 +2,11 @@ use std::collections::HashMap;
 
 fn main() {
     let state = init_stuff();
-    let grid = parse_grid(&GRID2, &state).unwrap();
-    display(&grid, &state);
+    let grid = solve(&GRID2, &state);
+    match grid {
+        Some(g) => display(&g, &state),
+        None => println!("no solution :("),
+    }
 }
 
 fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
@@ -130,25 +133,39 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
         let digit = &grid_str.chars().nth(index).unwrap().to_string();
 
         if state.digits.contains(digit) {
-            assign(&mut result, square, digit, state);
+            result = assign(&mut result, square, digit, state)?;
         }
     }
 
     Some(result)
 }
 
-fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) {
-    let mut other_digits = grid[square].clone();
+fn assign(
+    grid: &UnitsForSquare,
+    square: &Square,
+    digit: &String,
+    state: &State,
+) -> Option<UnitsForSquare> {
+    let mut new_grid = grid.clone();
+    let mut other_digits = new_grid[square].clone();
     other_digits.retain(|d| d != digit);
     for d in &other_digits {
-        eliminate(grid, square, d, state);
+        new_grid = eliminate(&new_grid, square, d, state)?;
     }
+
+    Some(new_grid)
 }
 
-fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) {
+fn eliminate(
+    grid_p: &UnitsForSquare,
+    square: &Square,
+    digit: &String,
+    state: &State,
+) -> Option<UnitsForSquare> {
+    let mut grid = grid_p.clone();
     // Eliminate!
     if !grid[square].contains(digit) {
-        return; // Already eliminated.
+        return Some(grid); // Already eliminated.
     }
 
     grid.get_mut(square).unwrap().retain(|d| d != digit);
@@ -156,12 +173,12 @@ fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: 
     if grid[square].len() < 1 {
         // TODO: Propagate errors.
         println!("Contradiction. Removed the last digit from {}", square);
-        return;
+        return None;
     } else if grid[square].len() == 1 {
         // Found a match, eliminate from peers.
         let d = &grid[square][0].clone();
         for s2 in &state.peers[square] {
-            eliminate(grid, s2, d, state);
+            grid = eliminate(&grid, s2, d, state)?;
         }
     }
 
@@ -175,12 +192,14 @@ fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: 
         }
         if dplaces.len() == 0 {
             println!("Contradiction, no place for {}", digit);
-            return;
+            return None;
         } else if dplaces.len() == 1 {
             // Digit can only be in one place in unit, assign it here.
-            assign(grid, dplaces[0], digit, state);
+            grid = assign(&grid, dplaces[0], digit, state).unwrap();
         }
     }
+
+    Some(grid)
 }
 
 fn display(grid: &UnitsForSquare, state: &State) {
@@ -205,6 +224,37 @@ fn display(grid: &UnitsForSquare, state: &State) {
     }
 }
 
+fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
+    let new_grid = parse_grid(grid, state)?;
+    search(&Some(new_grid), state)
+}
+
+// Using depth-first search and propagation, try all possible values.
+fn search(grid: &Option<UnitsForSquare>, state: &State) -> Option<UnitsForSquare> {
+    match grid {
+        Some(grid) => {
+            let new_grid = grid.clone();
+            // Solved!
+            if grid.values().all(|v| v.len() == 1) {
+                return Some(new_grid);
+            }
+            // Chose the unfilled square with the fewest possibilities.
+            let (square, digits) = grid
+                .iter()
+                .filter(|(_k, v)| v.len() > 1)
+                .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
+                .unwrap();
+            for digit in digits.into_iter() {
+                println!("assigning {}: {}", square, digit);
+                if let Some(g) = assign(&new_grid, square, digit, state) {
+                    return Some(g);
+                }
+            }
+            None
+        }
+        None => None,
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// Tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +311,14 @@ mod tests {
     fn test_parse_grid_validation() {
         let state = init_stuff();
         assert_eq!(parse_grid("1234", &state).is_none(), true);
+        assert_eq!(
+            parse_grid(
+                "123456789123456789123456789123456789123456789123456789123456789123456789123456789",
+                &state
+            )
+            .is_none(),
+            true
+        );
         assert_eq!(parse_grid(GRID1, &state).is_some(), true);
     }
 }
