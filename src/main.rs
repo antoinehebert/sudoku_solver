@@ -60,6 +60,7 @@ struct State {
     cols: Vec<String>,
     rows: Vec<String>,
     squares: Vec<String>,
+    // DRY?
     units: UnitlistsForSquare,
     peers: UnitsForSquare,
 }
@@ -128,7 +129,6 @@ fn init_stuff() -> State {
 
     // done!
     State {
-        // DRY
         digits: digits,
         cols: cols,
         rows: rows,
@@ -244,13 +244,13 @@ fn is_grid_boundary(col_index: usize) -> bool {
 }
 
 fn display(grid: &UnitsForSquare, state: &State) {
-    // 9 digits + 2 spaces on each side.
+    // 9 cols + 2 spaces on each side.
     let mut width = state.squares.iter().map(|s| grid[s].len()).max().unwrap();
     width += 2; // Padding
 
     // number header
     let mut digit_header: String = "".to_string();
-    for (d_index, d) in state.digits.iter().enumerate() {
+    for (d_index, d) in state.cols.iter().enumerate() {
         if is_grid_boundary(d_index) {
             digit_header.push(' ');
         }
