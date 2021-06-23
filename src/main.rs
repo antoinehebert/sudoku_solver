@@ -1,8 +1,13 @@
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 fn main() {
+    let now = SystemTime::now();
     let state = init_stuff();
     let grid = solve(&GRID2, &state);
+
+    println!("Elapsed time: {} secs.", now.elapsed().unwrap().as_secs());
+
     match grid {
         Some(g) => {
             println!("Solution:");
