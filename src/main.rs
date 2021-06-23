@@ -166,12 +166,7 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
     Some(result)
 }
 
-fn assign(
-    grid: &mut UnitsForSquare,
-    square: &Square,
-    digit: &String,
-    state: &State,
-) -> Option<()> {
+fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> Option<()> {
     let mut other_digits = grid[square].clone();
     other_digits.retain(|d| d != digit);
     for d in &other_digits {
@@ -294,7 +289,7 @@ fn display(grid: &UnitsForSquare, state: &State) {
 
 fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
     match parse_grid(grid, state) {
-        Some(new_grid) => search(&Some(new_grid), state),
+        Some(new_grid) => search(&new_grid, state),
         None => {
             println!("Invalid Grid.");
             None
@@ -303,35 +298,32 @@ fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
 }
 
 // Using depth-first search and propagation, try all possible values.
-fn search(grid: &Option<UnitsForSquare>, state: &State) -> Option<UnitsForSquare> {
-    match grid {
-        Some(grid) => {
-            // Solved!
-            if grid.values().all(|v| v.len() == 1) {
-                return Some(grid.clone());
-            }
-            // Chose the unfilled square with the fewest possibilities.
-            let (square, digits) = grid
-            .iter()
-            .filter(|(_k, v)| v.len() > 1)
-            .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
-            .unwrap();
-            for digit in digits.into_iter() {
-                // display(&grid, &state);
-                // println!("digging for {}: {}", square, digit);
-                let mut new_grid = grid.clone();
-                if let None = assign(&mut new_grid, square, digit, state) {
-                    return None;
-                }
-
-                if let Some(result) = search(&Some(new_grid), state) {
-                    return Some(result);
-                }
-            }
-            None
-        }
-        None => None,
+fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
+    // Solved!
+    if grid.values().all(|v| v.len() == 1) {
+        return Some(grid.clone());
     }
+
+    // Chose the unfilled square with the fewest possibilities.
+    let (square, digits) = grid
+        .iter()
+        .filter(|(_k, v)| v.len() > 1)
+        .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
+        .unwrap();
+
+    for digit in digits.into_iter() {
+        // display(&grid, &state);
+        // println!("digging for {}: {}", square, digit);
+        let mut new_grid = grid.clone();
+        if let None = assign(&mut new_grid, square, digit, state) {
+            return None;
+        }
+
+        if let Some(result) = search(&new_grid, state) {
+            return Some(result);
+        }
+    }
+    None
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// Tests
