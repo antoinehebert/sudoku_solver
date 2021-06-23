@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 fn main() {
-    dbg!(parse_grid(&GRID2, &init_stuff()));
+    let state = init_stuff();
+    let grid = parse_grid(&GRID2, &state).unwrap();
+    display(&grid, &state);
 }
 
 fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
@@ -118,6 +120,10 @@ fn parse_grid(grid: &str, state: &State) -> Option<UnitsForSquare> {
     // Start with all possible values
     let mut result = UnitsForSquare::new();
 
+    for square in &state.squares {
+        result.insert(square.clone(), state.digits.clone());
+    }
+
     for (index, square) in state.squares.iter().enumerate() {
         let digit = &grid.chars().nth(index).unwrap().to_string();
 
@@ -177,13 +183,27 @@ fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: 
     }
 }
 
-// fn display(grid: &UnitsForSquare, state: &State) {
-//     let width = state.squares.iter().map(|s| s.len()).max().unwrap();
-//     let line = vec!["-".repeat(3 * width); 3].join("+");
-//     for r in &state.rows {
-//         for c in &state.cols {}
-//     }
-// }
+fn display(grid: &UnitsForSquare, state: &State) {
+    // 9 digits + 2 spaces on each side.
+    let width = 9 + 2; // TODO: use this if formatting can be dynamic :(... let width = state.squares.iter().map(|s| s.len()).max().unwrap();
+    let line = vec!["-".repeat(3 * width); 3].join("+");
+    for (row_index, row) in state.rows.iter().enumerate() {
+        for (col_index, col) in state.cols.iter().enumerate() {
+            // TODO: use dynamic width.
+            print!("{:^11}", grid[&concat(&row, &col)].join(""));
+
+            if (col_index + 1) % 3 == 0 {
+                print!("|");
+            }
+        }
+
+        print!("\n");
+
+        if (row_index + 1) % 3 == 0 {
+            println!("{}", line);
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Tests
@@ -241,29 +261,6 @@ mod tests {
     fn test_parse_grid_validation() {
         let state = init_stuff();
         assert_eq!(parse_grid("1234", &state).is_none(), true);
-        assert_eq!(
-            parse_grid(
-                "123456789123456789123456789123456789123456789123456789123456789123456789123456789",
-                &state
-            )
-            .is_some(),
-            true
-        );
-        assert_eq!(parse_grid("1234567891234567891234567891234567891234567891234567891234567891234567891234567891", &state).is_none(), true);
+        assert_eq!(parse_grid(GRID1, &state).is_some(), true);
     }
-
-    // #[test]
-    // fn test_parse_grid() {
-    //     let state = init_stuff();
-    //     assert_eq!(
-    //         parse_grid(
-    //             "123456789123456789123456789123456789123456789123456789123456789123456789123456789",
-    //             &state
-    //         )
-    //         .is_some(),
-    //         true
-    //     );
-    //     assert_eq!(parse_grid("1234567891234567891234567891234567891234567891234567891234567891234567891234567891", &state).is_none(), true);
-    // }
-
 }
