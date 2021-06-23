@@ -311,7 +311,7 @@ fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
         .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
         .unwrap();
 
-    for digit in digits.into_iter() {
+    for digit in digits.iter() {
         // display(&grid, &state);
         // println!("digging for {}: {}", square, digit);
         let mut new_grid = grid.clone();
