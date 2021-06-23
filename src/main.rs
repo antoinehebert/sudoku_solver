@@ -219,12 +219,20 @@ fn center_string(s: &String, number_of_chars: usize) -> String {
 
 fn display(grid: &UnitsForSquare, state: &State) {
     // 9 digits + 2 spaces on each side.
-    let width = 9 + 2; // TODO: use this if formatting can be dynamic :(... let width = state.squares.iter().map(|s| s.len()).max().unwrap();
+    let mut width = state.squares.iter().map(|s| grid[s].len()).max().unwrap();
+    width += 2; // Padding
+    dbg!(width);
+
     let line = vec!["-".repeat(3 * width); 3].join("+");
     for (row_index, row) in state.rows.iter().enumerate() {
         for (col_index, col) in state.cols.iter().enumerate() {
-            // TODO: Use dynamic width.
-            print!("{:^11}", grid[&concat(&row, &col)].join(""));
+            // Would ideally use `{^<number>}` formatting instead of
+            // `center_string`, but I don't think you can set the number
+            // dynamically...
+            print!(
+                "{}",
+                center_string(&grid[&concat(&row, &col)].join(""), width)
+            );
 
             if (col_index + 1) % 3 == 0 {
                 print!("|");
