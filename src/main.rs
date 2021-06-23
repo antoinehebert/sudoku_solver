@@ -9,8 +9,8 @@ use std::time::Instant;
 // - Make search multi-thread?
 // - We clone everything for simplicity, could we share elements to be more
 //   efficient?
-// - Type names are confusing.
 // - Use str instead of String when we can.
+// - Use concat! instead of home brewed concat.
 
 fn main() {
     let filename: String;
@@ -63,20 +63,22 @@ fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
     result
 }
 
-type Square = String; // Row-Column id, e.g.: A1.
-type SquareResult = Vec<String>; // Possible values for a square.
+type Cell = String; // Row-Column id, e.g.: A1.
+type CellValues = Vec<String>; // Possible values for a cell.
 
-type UnitsList = Vec<SquareResult>; // A row, column or 3x3 square.
+type Group = Vec<Cell>; // A row, column or 3x3 sub-grid.
+type Groups = Vec<Group>;
 
-type UnitlistsForSquare = HashMap<Square, UnitsList>;
-type UnitsForSquare = HashMap<Square, SquareResult>;
+type CellGroups = HashMap<Cell, Groups>;
+type Peers = HashMap<Cell, Vec<Cell>>;
+type Grid = HashMap<Cell, CellValues>;
 
 #[derive(Debug)]
 struct State {
     digits: Vec<String>,
     cols: Vec<String>,
     rows: Vec<String>,
-    squares: Vec<Square>,
+    squares: Vec<Cell>,
 
     // .units["C2"] =
     // [
@@ -85,7 +87,7 @@ struct State {
     //     ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
     // ]
     // **NOTE:** C2 included.
-    units: UnitlistsForSquare,
+    cell_groups: CellGroups,
 
     // .peers["C2"] =
     // [
@@ -93,10 +95,9 @@ struct State {
     //     "D2", "E2", "F2", "G2", "H2", "I2"
     // ]
     // **NOTE:** C2 excluded.
-    peers: UnitsForSquare,
+    peers: Peers,
 }
 
-// TODO: Use `concat!` instead.
 fn concat(s1: &String, s2: &String) -> String {
     format!("{}{}", s1, s2)
 }
@@ -112,27 +113,27 @@ fn init_stuff() -> State {
 
     let squares = cross(&rows, &cols);
 
-    // unitlist
-    let mut unitlist: UnitsList = vec![];
+    // all groups
+    let mut groups: Groups = vec![];
     for c in &cols {
-        unitlist.push(cross(&rows, &vec![c.clone()]));
+        groups.push(cross(&rows, &vec![c.clone()]));
     }
     for r in &rows {
-        unitlist.push(cross(&vec![r.clone()], &cols));
+        groups.push(cross(&vec![r.clone()], &cols));
     }
     for rs in vec![str_to_vec("ABC"), str_to_vec("DEF"), str_to_vec("GHI")] {
         for cs in vec![str_to_vec("123"), str_to_vec("456"), str_to_vec("789")] {
-            unitlist.push(cross(&rs, &cs));
+            groups.push(cross(&rs, &cs));
         }
     }
 
-    // units
-    let mut units: UnitlistsForSquare = HashMap::new();
+    // cell groups
+    let mut cell_groups: CellGroups = HashMap::new();
 
     for s in &squares {
-        for u in &unitlist {
+        for u in &groups {
             if u.contains(s) {
-                units
+                cell_groups
                     .entry(s.clone())
                     .or_insert_with(Vec::new)
                     .push(u.clone());
@@ -140,10 +141,11 @@ fn init_stuff() -> State {
         }
     }
 
-    let mut peers = UnitsForSquare::new();
+    // peers
+    let mut peers = Peers::new();
     for s in &squares {
         // flatten
-        let mut new_units: SquareResult = units
+        let mut new_units: Vec<Cell> = cell_groups
             .get(s)
             .cloned()
             .unwrap()
@@ -164,18 +166,18 @@ fn init_stuff() -> State {
         rows: rows,
         squares: squares,
         peers: peers,
-        units: units,
+        cell_groups: cell_groups,
     }
 }
 
-fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
+fn parse_grid(grid_str: &str, state: &State) -> Option<Grid> {
     println!("Parsing {}\n", grid_str);
     if grid_str.len() != 81 {
         return None;
     }
 
     // Start with all possible values
-    let mut result = UnitsForSquare::new();
+    let mut result = Grid::new();
 
     // Fill grid with all digits first.
     for square in &state.squares {
@@ -196,14 +198,11 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
 }
 
 /// Eliminate all the other `digit` from `grid[square]` and propagate.
-fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> bool {
-    let mut other_digits = grid[square].clone();
+fn assign(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> bool {
+    let mut other_digits = grid[cell].clone();
     other_digits.retain(|d| d != digit);
 
-    if other_digits
-        .iter()
-        .all(|d| eliminate(grid, square, d, state))
-    {
+    if other_digits.iter().all(|d| eliminate(grid, cell, d, state)) {
         true
     } else {
         false
@@ -211,23 +210,23 @@ fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &St
 }
 
 /// Eliminate `digit` from `grid[square]` and propagate.
-fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> bool {
+fn eliminate(grid: &mut Grid, cell: &Cell, digit: &String, state: &State) -> bool {
     // Eliminate!
-    if !grid[square].contains(digit) {
+    if !grid[cell].contains(digit) {
         return true; // Already eliminated.
     }
 
-    grid.get_mut(square).unwrap().retain(|d| d != digit);
+    grid.get_mut(cell).unwrap().retain(|d| d != digit);
 
-    if grid[square].len() == 0 {
+    if grid[cell].len() == 0 {
         return false;
     }
 
-    if grid[square].len() == 1 {
+    if grid[cell].len() == 1 {
         // Found a match, eliminate from peers.
-        let d = &grid[square][0].clone();
-        // assert!(state.peers[square].len() > 0); // remove!
-        if !state.peers[square]
+        let d = &grid[cell][0].clone();
+        // assert!(state.peers[cell].len() > 0); // remove!
+        if !state.peers[cell]
             .iter()
             .all(|s2| eliminate(grid, s2, d, state))
         {
@@ -236,7 +235,7 @@ fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: 
     }
 
     // If a unit is reduced to only one place for a value, then put it there.
-    for unit in &state.units[square] {
+    for unit in &state.cell_groups[cell] {
         let mut dplaces = Vec::new();
         for s in unit {
             if grid[s].contains(digit) {
@@ -279,11 +278,11 @@ fn is_grid_boundary(col_index: usize) -> bool {
     (col_index + 1) % 3 == 1
 }
 
-fn display_grid(grid: &UnitsForSquare, state: &State) {
+fn display_grid(grid: &Grid, state: &State) {
     println!("{}", format_grid(grid, state));
 }
 
-fn format_grid(grid: &UnitsForSquare, state: &State) -> String {
+fn format_grid(grid: &Grid, state: &State) -> String {
     let mut result = String::new();
 
     // 9 cols + 2 spaces on each side.
@@ -332,7 +331,7 @@ fn format_grid(grid: &UnitsForSquare, state: &State) -> String {
     result
 }
 
-fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
+fn solve(grid: &str, state: &State) -> Option<Grid> {
     match parse_grid(grid, state) {
         Some(new_grid) => search(&new_grid, state),
         None => {
@@ -343,7 +342,7 @@ fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
 }
 
 // Using depth-first search and propagation, try all possible values.
-fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
+fn search(grid: &Grid, state: &State) -> Option<Grid> {
     // Solved!
     if grid.values().all(|v| v.len() == 1) {
         return Some(grid.clone());
@@ -391,11 +390,11 @@ mod tests {
 
         assert_eq!(game.squares.len(), 81);
         for s in &game.squares {
-            assert_eq!(game.units[s].len(), 3);
+            assert_eq!(game.cell_groups[s].len(), 3);
             assert_eq!(game.peers[s].len(), 20);
         }
         assert_eq!(
-            game.units["C2"],
+            game.cell_groups["C2"],
             [
                 ["A2", "B2", "C2", "D2", "E2", "F2", "G2", "H2", "I2"],
                 ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
