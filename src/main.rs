@@ -229,18 +229,33 @@ fn center_string(s: &String, number_of_chars: usize) -> String {
     )
 }
 
+fn is_grid_boundary(col_index: usize) -> bool {
+    (col_index + 1) % 3 == 1
+}
+
 fn display(grid: &UnitsForSquare, state: &State) {
     // 9 digits + 2 spaces on each side.
     let mut width = state.squares.iter().map(|s| grid[s].len()).max().unwrap();
     width += 2; // Padding
 
+    // number header
+    let mut digit_header: String = "".to_string();
+    for (d_index, d) in state.digits.iter().enumerate() {
+        if is_grid_boundary(d_index) {
+            digit_header.push(' ');
+        }
+        digit_header.push_str(&center_string(&d, width));
+    }
+    println!("  {}", digit_header);
+
     let mut line = vec!["-".repeat(3 * width); 3].join("+");
-    line = format!("+{}+", line);
+    line = format!("  +{}+", line);
 
     println!("{}", line);
     for (row_index, row) in state.rows.iter().enumerate() {
+        print!("{} ", row);
         for (col_index, col) in state.cols.iter().enumerate() {
-            if (col_index + 1) % 3 == 1 {
+            if is_grid_boundary(col_index) {
                 print!("|");
             }
 
