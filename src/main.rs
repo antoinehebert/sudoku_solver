@@ -60,7 +60,6 @@ struct State {
     cols: Vec<String>,
     rows: Vec<String>,
     squares: Vec<String>,
-    unitlist: UnitsList,
     units: UnitlistsForSquare,
     peers: UnitsForSquare,
 }
@@ -135,7 +134,6 @@ fn init_stuff() -> State {
         cols: cols,
         rows: rows,
         squares: squares,
-        unitlist: unitlist,
         peers: peers,
         units: units,
     }
@@ -343,7 +341,6 @@ mod tests {
         let game = init_stuff();
 
         assert_eq!(game.squares.len(), 81);
-        assert_eq!(game.unitlist.len(), 27);
         for s in game.squares {
             assert_eq!(game.units[&s].len(), 3);
             assert_eq!(game.peers[&s].len(), 20);
