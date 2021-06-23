@@ -24,14 +24,14 @@ type UnitsForSquare = HashMap<String, UnitsList>;
 type PeersForSquare = HashMap<String, Units>;
 
 #[derive(Debug)]
-struct Game {
+struct State {
     squares: Vec<String>,
     unitlist: UnitsList,
     units: UnitsForSquare,
     peers: PeersForSquare,
 }
 
-fn init_stuff() -> Game {
+fn init_stuff() -> State {
     let squares = cross(ROWS, COLS);
 
     // unitlist
@@ -80,14 +80,18 @@ fn init_stuff() -> Game {
     }
 
     // done!
-    Game {
+    State {
         squares: squares,
         unitlist: unitlist,
         peers: peers,
         units: units,
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 /// Tests
+////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
