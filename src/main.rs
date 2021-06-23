@@ -7,9 +7,6 @@ use std::time::Instant;
 // TODO:
 // - Make state singleton or global? Doesn't make sense to pass this down all the time.
 // - Make search multi-thread?
-// - We clone everything for simplicity, could we share elements to be more
-//   efficient?
-// - Use str instead of String when we can.
 
 //
 // Types
@@ -86,7 +83,7 @@ fn cross(xs: &[&str], ys: &[&str]) -> Vec<String> {
 struct State {
     cells: Vec<Cell>,
 
-    // .units["C2"] =
+    // .cell_groups["C2"] =
     // [
     //     ["A2", "B2", "C2", "D2", "E2", "F2", "G2", "H2", "I2"],
     //     ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
