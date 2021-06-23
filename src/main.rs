@@ -8,9 +8,7 @@ fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     for i in a {
         for j in b {
-            let mut new_str: String = i.clone();
-            new_str.push_str(j);
-            result.push(new_str);
+            result.push(concat(i, j));
         }
     }
 
@@ -35,14 +33,21 @@ struct State {
     peers: UnitsForSquare,
 }
 
-fn string_to_vec(s: &str) -> Vec<String> {
+// I can't believe there's no better way of doing this!?
+fn concat(s1: &String, s2: &String) -> String {
+    let mut new_str = s1.clone();
+    new_str.push_str(s2);
+    return new_str;
+}
+
+fn str_to_vec(s: &str) -> Vec<String> {
     s.chars().map(|s| s.to_string()).collect()
 }
 
 fn init_stuff() -> State {
-    let digits: Vec<String> = string_to_vec("123456789");
-    let cols: Vec<String> = string_to_vec("123456789");
-    let rows: Vec<String> = string_to_vec("ABCDEFGHI");
+    let digits: Vec<String> = str_to_vec("123456789");
+    let cols: Vec<String> = str_to_vec("123456789");
+    let rows: Vec<String> = str_to_vec("ABCDEFGHI");
 
     let squares = cross(&rows, &cols);
 
@@ -54,16 +59,8 @@ fn init_stuff() -> State {
     for r in &rows {
         unitlist.push(cross(&vec![r.clone()], &cols));
     }
-    for rs in vec![
-        string_to_vec("ABC"),
-        string_to_vec("DEF"),
-        string_to_vec("GHI"),
-    ] {
-        for cs in vec![
-            string_to_vec("123"),
-            string_to_vec("456"),
-            string_to_vec("789"),
-        ] {
+    for rs in vec![str_to_vec("ABC"), str_to_vec("DEF"), str_to_vec("GHI")] {
+        for cs in vec![str_to_vec("123"), str_to_vec("456"), str_to_vec("789")] {
             unitlist.push(cross(&rs, &cs));
         }
     }
@@ -180,6 +177,14 @@ fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: 
     }
 }
 
+// fn display(grid: &UnitsForSquare, state: &State) {
+//     let width = state.squares.iter().map(|s| s.len()).max().unwrap();
+//     let line = vec!["-".repeat(3 * width); 3].join("+");
+//     for r in &state.rows {
+//         for c in &state.cols {}
+//     }
+// }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +204,7 @@ mod tests {
     #[test]
     fn test_cross() {
         assert_eq!(
-            cross(&string_to_vec("AB"), &string_to_vec("12")),
+            cross(&str_to_vec("AB"), &str_to_vec("12")),
             ["A1", "A2", "B1", "B2"]
         );
     }
