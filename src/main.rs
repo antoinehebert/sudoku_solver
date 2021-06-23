@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::env;
+use std::fs;
 use std::time::Instant;
 
 // TODO:
@@ -8,10 +10,19 @@ use std::time::Instant;
 //       efficient?
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 2 {
+        println!("Expected a filename with a problem to solve.");
+        return;
+    }
+
+    let filename = &args[1];
+    let problem = fs::read_to_string(filename).expect("Something went wrong reading the file.");
+
     let start = Instant::now();
     let state = init_stuff();
-    let grid = solve(&GRID2, &state);
-
+    let grid = solve(&problem.trim(), &state);
     println!("Elapsed time: {:?} secs.", start.elapsed());
 
     match grid {
@@ -312,16 +323,6 @@ fn search(grid: &Option<UnitsForSquare>, state: &State) -> Option<UnitsForSquare
 /// Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-const GRID1: &str =
-    "003020600900305001001806400008102900700000008006708200002609500800203009005010300";
-const GRID2: &str =
-    "4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......";
-const HARD_GRID1: &str =
-    ".....6....59.....82....8....45........3........6..3.54...325..6..................";
-
-const HARD_GRID2: &str =
-    ".....5.8....6.1.43..........1.5........1.6...3.......553.....61........4.........";
-
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -374,7 +375,9 @@ mod tests {
             .is_none(),
             true
         );
-        assert_eq!(parse_grid(GRID1, &state).is_some(), true);
+        let grid =
+            "003020600900305001001806400008102900700000008006708200002609500800203009005010300";
+        assert_eq!(parse_grid(grid, &state).is_some(), true);
     }
 
     #[test]
