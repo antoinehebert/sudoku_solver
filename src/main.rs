@@ -4,7 +4,7 @@ use std::fs;
 use std::time::Instant;
 
 // TODO:
-//     - Make state singleton.
+//     - Make state singleton or global? Doesn't make sense to pass this down all the time.
 //     - Make search multi-thread?
 //     - We clone everything for simplicity, could we share elements to be more
 //       efficient?
@@ -83,6 +83,7 @@ struct State {
     //     ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
     //     ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
     // ]
+    // **NOTE:** C2 included.
     units: UnitlistsForSquare,
 
     // .peers["C2"] =
@@ -90,15 +91,15 @@ struct State {
     //     "A1", "A2", "A3", "B1", "B2", "B3", "C1", "C3", "C4", "C5", "C6", "C7", "C8", "C9",
     //     "D2", "E2", "F2", "G2", "H2", "I2"
     // ]
+    // **NOTE:** C2 excluded.
     peers: UnitsForSquare,
 }
 
-// TODO: Remove this function?
+// TODO: Use `concat!` instead.
 fn concat(s1: &String, s2: &String) -> String {
     format!("{}{}", s1, s2)
 }
 
-// TODO: Should use `&str`?
 fn str_to_vec(s: &str) -> Vec<String> {
     s.chars().map(|s| s.to_string()).collect()
 }
@@ -184,7 +185,7 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
         let digit = &grid_str.chars().nth(index).unwrap().to_string();
 
         if state.digits.contains(digit) {
-            if let None = assign(&mut result, square, digit, state) {
+            if !assign(&mut result, square, digit, state) {
                 return None;
             }
         }
@@ -193,42 +194,43 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
     Some(result)
 }
 
-fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> Option<()> {
+/// Eliminate all the other `digit` from `grid[square]` and propagate.
+fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> bool {
     let mut other_digits = grid[square].clone();
     other_digits.retain(|d| d != digit);
 
-    for d in &other_digits {
-        if let None = eliminate(grid, square, d, state) {
-            return None;
-        }
+    if other_digits
+        .iter()
+        .all(|d| eliminate(grid, square, d, state))
+    {
+        true
+    } else {
+        false
     }
-
-    Some(())
 }
 
-fn eliminate(
-    grid: &mut UnitsForSquare,
-    square: &Square,
-    digit: &String,
-    state: &State,
-) -> Option<()> {
+/// Eliminate `digit` from `grid[square]` and propagate.
+fn eliminate(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> bool {
     // Eliminate!
     if !grid[square].contains(digit) {
-        return Some(()); // Already eliminated.
+        return true; // Already eliminated.
     }
 
     grid.get_mut(square).unwrap().retain(|d| d != digit);
 
-    if grid[square].len() < 1 {
-        return None;
-    } else if grid[square].len() == 1 {
+    if grid[square].len() == 0 {
+        return false;
+    }
+
+    if grid[square].len() == 1 {
         // Found a match, eliminate from peers.
         let d = &grid[square][0].clone();
-        assert!(state.peers[square].len() > 0);
-        for s2 in &state.peers[square] {
-            if let None = eliminate(grid, s2, d, state) {
-                return None;
-            }
+        // assert!(state.peers[square].len() > 0); // remove!
+        if !state.peers[square]
+            .iter()
+            .all(|s2| eliminate(grid, s2, d, state))
+        {
+            return false;
         }
     }
 
@@ -242,18 +244,18 @@ fn eliminate(
         }
 
         if dplaces.len() == 0 {
-            return None;
+            return false;
         }
 
         if dplaces.len() == 1 {
             // Digit can only be in one place in unit, assign it here.
-            if let None = assign(grid, dplaces[0], digit, state) {
-                return None;
+            if !assign(grid, dplaces[0], digit, state) {
+                return false;
             }
         }
     }
 
-    Some(())
+    true
 }
 
 fn center_string(s: &String, number_of_chars: usize) -> String {
@@ -347,12 +349,13 @@ fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
         // display(&grid, &state);
         // println!("digging for {}: {}", square, digit);
         let mut new_grid = grid.clone();
-        if let Some(()) = assign(&mut new_grid, square, digit, state) {
+        if assign(&mut new_grid, square, digit, state) {
             if let Some(result) = search(&new_grid, state) {
                 return Some(result);
             }
         }
     }
+
     None
 }
 
@@ -378,9 +381,9 @@ mod tests {
         let game = init_stuff();
 
         assert_eq!(game.squares.len(), 81);
-        for s in game.squares {
-            assert_eq!(game.units[&s].len(), 3);
-            assert_eq!(game.peers[&s].len(), 20);
+        for s in &game.squares {
+            assert_eq!(game.units[s].len(), 3);
+            assert_eq!(game.peers[s].len(), 20);
         }
         assert_eq!(
             game.units["C2"],
@@ -396,7 +399,19 @@ mod tests {
                 "A1", "A2", "A3", "B1", "B2", "B3", "C1", "C3", "C4", "C5", "C6", "C7", "C8", "C9",
                 "D2", "E2", "F2", "G2", "H2", "I2"
             ]
-        )
+        );
+
+        assert_eq!(
+            &game.squares,
+            &vec![
+                "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "B1", "B2", "B3", "B4", "B5",
+                "B6", "B7", "B8", "B9", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "D1",
+                "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "E1", "E2", "E3", "E4", "E5", "E6",
+                "E7", "E8", "E9", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "G1", "G2",
+                "G3", "G4", "G5", "G6", "G7", "G8", "G9", "H1", "H2", "H3", "H4", "H5", "H6", "H7",
+                "H8", "H9", "I1", "I2", "I3", "I4", "I5", "I6", "I7", "I8", "I9"
+            ]
+        );
     }
 
     #[test]
