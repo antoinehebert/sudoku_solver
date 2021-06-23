@@ -223,9 +223,16 @@ fn display(grid: &UnitsForSquare, state: &State) {
     width += 2; // Padding
     dbg!(width);
 
-    let line = vec!["-".repeat(3 * width); 3].join("+");
+    let mut line = vec!["-".repeat(3 * width); 3].join("+");
+    line = format!("+{}+", line);
+
+    println!("{}", line);
     for (row_index, row) in state.rows.iter().enumerate() {
         for (col_index, col) in state.cols.iter().enumerate() {
+            if (col_index + 1) % 3 == 1 {
+                print!("|");
+            }
+
             // Would ideally use `{^<number>}` formatting instead of
             // `center_string`, but I don't think you can set the number
             // dynamically...
@@ -233,13 +240,9 @@ fn display(grid: &UnitsForSquare, state: &State) {
                 "{}",
                 center_string(&grid[&concat(&row, &col)].join(""), width)
             );
-
-            if (col_index + 1) % 3 == 0 {
-                print!("|");
-            }
         }
 
-        print!("\n");
+        print!("|\n");
 
         if (row_index + 1) % 3 == 0 {
             println!("{}", line);
