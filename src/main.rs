@@ -142,7 +142,6 @@ fn init_stuff() -> State {
 fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
     println!("Parsing {}\n", grid_str);
     if grid_str.len() != 81 {
-        println!("ERROR: Invalid grid");
         return None;
     }
 
@@ -158,7 +157,9 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
         let digit = &grid_str.chars().nth(index).unwrap().to_string();
 
         if state.digits.contains(digit) {
-            result = assign(&mut result, square, digit, state)?;
+            if let None = assign(&mut result, square, digit, state) {
+                return None;
+            }
         }
     }
 
@@ -166,31 +167,31 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
 }
 
 fn assign(
-    grid: &UnitsForSquare,
+    grid: &mut UnitsForSquare,
     square: &Square,
     digit: &String,
     state: &State,
-) -> Option<UnitsForSquare> {
-    let mut new_grid = grid.clone();
-    let mut other_digits = new_grid[square].clone();
+) -> Option<()> {
+    let mut other_digits = grid[square].clone();
     other_digits.retain(|d| d != digit);
     for d in &other_digits {
-        new_grid = eliminate(&new_grid, square, d, state)?;
+        if let None = eliminate(grid, square, d, state) {
+            return None;
+        }
     }
 
-    Some(new_grid)
+    Some(())
 }
 
 fn eliminate(
-    grid_p: &UnitsForSquare,
+    grid: &mut UnitsForSquare,
     square: &Square,
     digit: &String,
     state: &State,
-) -> Option<UnitsForSquare> {
-    let mut grid = grid_p.clone();
+) -> Option<()> {
     // Eliminate!
     if !grid[square].contains(digit) {
-        return Some(grid); // Already eliminated.
+        return Some(()); // Already eliminated.
     }
 
     grid.get_mut(square).unwrap().retain(|d| d != digit);
@@ -201,7 +202,9 @@ fn eliminate(
         // Found a match, eliminate from peers.
         let d = &grid[square][0].clone();
         for s2 in &state.peers[square] {
-            grid = eliminate(&grid, s2, d, state)?;
+            if let None = eliminate(grid, s2, d, state) {
+                return None;
+            }
         }
     }
 
@@ -217,11 +220,13 @@ fn eliminate(
             return None;
         } else if dplaces.len() == 1 {
             // Digit can only be in one place in unit, assign it here.
-            grid = assign(&grid, dplaces[0], digit, state)?;
+            if let None = assign(grid, dplaces[0], digit, state) {
+                return None;
+            }
         }
     }
 
-    Some(grid)
+    Some(())
 }
 
 fn center_string(s: &String, number_of_chars: usize) -> String {
@@ -288,30 +293,39 @@ fn display(grid: &UnitsForSquare, state: &State) {
 }
 
 fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
-    let new_grid = parse_grid(grid, state)?;
-    search(&Some(new_grid), state)
+    match parse_grid(grid, state) {
+        Some(new_grid) => search(&Some(new_grid), state),
+        None => {
+            println!("Invalid Grid.");
+            None
+        }
+    }
 }
 
 // Using depth-first search and propagation, try all possible values.
 fn search(grid: &Option<UnitsForSquare>, state: &State) -> Option<UnitsForSquare> {
     match grid {
         Some(grid) => {
-            let new_grid = grid.clone();
             // Solved!
             if grid.values().all(|v| v.len() == 1) {
-                return Some(new_grid);
+                return Some(grid.clone());
             }
             // Chose the unfilled square with the fewest possibilities.
             let (square, digits) = grid
-                .iter()
-                .filter(|(_k, v)| v.len() > 1)
-                .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
-                .unwrap();
+            .iter()
+            .filter(|(_k, v)| v.len() > 1)
+            .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
+            .unwrap();
             for digit in digits.into_iter() {
                 // display(&grid, &state);
                 // println!("digging for {}: {}", square, digit);
-                if let Some(g) = search(&assign(&new_grid, square, digit, state), state) {
-                    return Some(g);
+                let mut new_grid = grid.clone();
+                if let None = assign(&mut new_grid, square, digit, state) {
+                    return None;
+                }
+
+                if let Some(result) = search(&Some(new_grid), state) {
+                    return Some(result);
                 }
             }
             None
