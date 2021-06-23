@@ -12,14 +12,16 @@ use std::time::Instant;
 //     - Use str instead of String when we can.
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let filename: String;
 
-    if args.len() != 2 {
-        println!("Expected a filename with a problem to solve.");
-        return;
-    }
+    match parse_args() {
+        None => {
+            println!("Expected a filename with a problem to solve.");
+            return;
+        }
+        Some(fname) => filename = fname,
+    };
 
-    let filename = &args[1];
     let problem = fs::read_to_string(filename).expect("Something went wrong reading the file.");
 
     let start = Instant::now();
@@ -34,6 +36,18 @@ fn main() {
         }
         None => println!("no solution :("),
     }
+}
+
+fn parse_args() -> Option<String> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 2 {
+        println!("Expected a filename with a problem to solve.");
+        return None;
+    }
+
+    let filename = &args[1];
+    return Some(filename.to_string());
 }
 
 // ("AB", "12") -> ["A1", "A2", "B1", "B2"]
