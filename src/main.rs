@@ -157,8 +157,8 @@ fn init_stuff() -> State {
     // done!
     State {
         cells,
-        peers: peers,
-        cell_groups: cell_groups,
+        peers,
+        cell_groups,
     }
 }
 
