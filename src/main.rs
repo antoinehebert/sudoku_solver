@@ -27,9 +27,9 @@ type Grid = HashMap<Cell, CellValues>;
 //
 // Constants
 //
-static DIGITS: [&'static str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-static COLUMNS: [&'static str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-static ROWS: [&'static str; 9] = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+static DIGITS: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+static COLUMNS: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+static ROWS: [&str; 9] = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
 
 fn main() {
     let filename: String;
@@ -84,7 +84,7 @@ fn cross(xs: &[&str], ys: &[&str]) -> Vec<String> {
 
 #[derive(Debug)]
 struct State {
-    squares: Vec<Cell>,
+    cells: Vec<Cell>,
 
     // .units["C2"] =
     // [
@@ -105,7 +105,7 @@ struct State {
 }
 
 fn init_stuff() -> State {
-    let squares = cross(&ROWS, &COLUMNS);
+    let cells = cross(&ROWS, &COLUMNS);
 
     // all groups
     let mut groups: Groups = vec![];
@@ -125,7 +125,7 @@ fn init_stuff() -> State {
     // cell groups
     let mut cell_groups: CellGroups = HashMap::new();
 
-    for s in &squares {
+    for s in &cells {
         for u in &groups {
             if u.contains(s) {
                 cell_groups
@@ -138,7 +138,7 @@ fn init_stuff() -> State {
 
     // peers
     let mut peers = Peers::new();
-    for s in &squares {
+    for s in &cells {
         // flatten
         let mut new_units: Vec<Cell> = cell_groups
             .get(s)
@@ -156,7 +156,7 @@ fn init_stuff() -> State {
 
     // done!
     State {
-        squares: squares,
+        cells,
         peers: peers,
         cell_groups: cell_groups,
     }
@@ -174,11 +174,11 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<Grid> {
     let digits: CellValues = DIGITS.iter().map(|s| s.to_string()).collect();
 
     // Fill grid with all digits first.
-    for square in &state.squares {
+    for square in &state.cells {
         result.insert(square.clone(), digits.clone());
     }
 
-    for (index, square) in state.squares.iter().enumerate() {
+    for (index, square) in state.cells.iter().enumerate() {
         let digit = &grid_str.chars().nth(index).unwrap().to_string();
 
         if digits.contains(digit) {
@@ -280,7 +280,7 @@ fn format_grid(grid: &Grid, state: &State) -> String {
     let mut result = String::new();
 
     // 9 cols + 2 spaces on each side.
-    let mut width = state.squares.iter().map(|s| grid[s].len()).max().unwrap();
+    let mut width = state.cells.iter().map(|s| grid[s].len()).max().unwrap();
     width += 2; // Padding
 
     // number header
@@ -381,8 +381,8 @@ mod tests {
     fn test_constants() {
         let game = init_stuff();
 
-        assert_eq!(game.squares.len(), 81);
-        for s in &game.squares {
+        assert_eq!(game.cells.len(), 81);
+        for s in &game.cells {
             assert_eq!(game.cell_groups[s].len(), 3);
             assert_eq!(game.peers[s].len(), 20);
         }
@@ -403,7 +403,7 @@ mod tests {
         );
 
         assert_eq!(
-            &game.squares,
+            &game.cells,
             &vec![
                 "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "B1", "B2", "B3", "B4", "B5",
                 "B6", "B7", "B8", "B9", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "D1",
