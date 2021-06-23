@@ -64,13 +64,12 @@ struct State {
     peers: UnitsForSquare,
 }
 
-// I can't believe there's no better way of doing this!?
+// TODO: Remove this function?
 fn concat(s1: &String, s2: &String) -> String {
-    let mut new_str = s1.clone();
-    new_str.push_str(s2);
-    return new_str;
+    format!("{}{}", s1, s2)
 }
 
+// TODO: Should use `&str`?
 fn str_to_vec(s: &str) -> Vec<String> {
     s.chars().map(|s| s.to_string()).collect()
 }
