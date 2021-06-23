@@ -84,7 +84,6 @@ fn init_stuff() -> State {
         }
     }
 
-    //              for s in squares)
     let mut peers = UnitsForSquare::new();
     for s in &squares {
         // flatten
@@ -200,6 +199,22 @@ fn eliminate(
     }
 
     Some(grid)
+}
+
+fn center_string(s: &String, number_of_chars: usize) -> String {
+    if number_of_chars <= s.len() {
+        return s.clone();
+    }
+
+    let spaces_right = (number_of_chars - s.len()) / 2;
+    let spaces_left = spaces_right + (number_of_chars - s.len()) % 2;
+
+    format!(
+        "{}{}{}",
+        " ".repeat(spaces_left),
+        s.clone(),
+        " ".repeat(spaces_right)
+    )
 }
 
 fn display(grid: &UnitsForSquare, state: &State) {
@@ -320,5 +335,16 @@ mod tests {
             true
         );
         assert_eq!(parse_grid(GRID1, &state).is_some(), true);
+    }
+
+    #[test]
+    fn test_center_string() {
+        assert_eq!(center_string(&"asdf".to_string(), 2), "asdf");
+        assert_eq!(center_string(&"asdf".to_string(), 4), "asdf");
+        assert_eq!(center_string(&"asdf".to_string(), 5), " asdf");
+        assert_eq!(center_string(&"asdf".to_string(), 6), " asdf ");
+        assert_eq!(center_string(&"asdf".to_string(), 7), "  asdf ");
+        assert_eq!(center_string(&"asdf".to_string(), 10), "   asdf   ");
+        assert_eq!(center_string(&"asdf".to_string(), 11), "    asdf   ");
     }
 }
