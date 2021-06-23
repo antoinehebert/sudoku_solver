@@ -5,7 +5,7 @@ use std::time::Instant;
 
 // TODO:
 //     - Make state singleton.
-//     - Make search multithread?
+//     - Make search multi-thread?
 //     - We clone everything for simplicity, could we share elements to be more
 //       efficient?
 //     - Type names are confusing.
@@ -75,7 +75,7 @@ struct State {
     digits: Vec<String>,
     cols: Vec<String>,
     rows: Vec<String>,
-    squares: Vec<String>,
+    squares: Vec<Square>,
     // DRY?
     units: UnitlistsForSquare,
     peers: UnitsForSquare,
