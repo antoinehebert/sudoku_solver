@@ -23,7 +23,7 @@ fn main() {
     let start = Instant::now();
     let state = init_stuff();
     let grid = solve(&problem.trim(), &state);
-    println!("Elapsed time: {:?} secs.", start.elapsed());
+    println!("Elapsed time: {:?}.", start.elapsed());
 
     match grid {
         Some(g) => {
@@ -315,12 +315,13 @@ fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
         // display(&grid, &state);
         // println!("digging for {}: {}", square, digit);
         let mut new_grid = grid.clone();
-        if let None = assign(&mut new_grid, square, digit, state) {
-            return None;
-        }
-
-        if let Some(result) = search(&new_grid, state) {
-            return Some(result);
+        match assign(&mut new_grid, square, digit, state) {
+            Some(()) => {
+                if let Some(result) = search(&new_grid, state) {
+                    return Some(result);
+                }
+            }
+            None => (),
         }
     }
     None
