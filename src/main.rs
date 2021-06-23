@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 use std::env;
+use std::fmt::Write;
 use std::fs;
 use std::time::Instant;
 
 // TODO:
-//     - Make state singleton or global? Doesn't make sense to pass this down all the time.
-//     - Make search multi-thread?
-//     - We clone everything for simplicity, could we share elements to be more
-//       efficient?
-//     - Type names are confusing.
-//     - Use str instead of String when we can.
+// - Make state singleton or global? Doesn't make sense to pass this down all the time.
+// - Make search multi-thread?
+// - We clone everything for simplicity, could we share elements to be more
+//   efficient?
+// - Type names are confusing.
+// - Use str instead of String when we can.
 
 fn main() {
     let filename: String;
@@ -32,7 +33,7 @@ fn main() {
     match grid {
         Some(g) => {
             println!("Solution:");
-            display(&g, &state);
+            display_grid(&g, &state);
         }
         None => println!("no solution :("),
     }
@@ -278,7 +279,13 @@ fn is_grid_boundary(col_index: usize) -> bool {
     (col_index + 1) % 3 == 1
 }
 
-fn display(grid: &UnitsForSquare, state: &State) {
+fn display_grid(grid: &UnitsForSquare, state: &State) {
+    println!("{}", format_grid(grid, state));
+}
+
+fn format_grid(grid: &UnitsForSquare, state: &State) -> String {
+    let mut result = String::new();
+
     // 9 cols + 2 spaces on each side.
     let mut width = state.squares.iter().map(|s| grid[s].len()).max().unwrap();
     width += 2; // Padding
@@ -291,34 +298,38 @@ fn display(grid: &UnitsForSquare, state: &State) {
         }
         digit_header.push_str(&center_string(&d, width));
     }
-    println!("  {}", digit_header);
+    writeln!(&mut result, "  {}", digit_header.trim_end()).unwrap();
 
     let mut line = vec!["-".repeat(3 * width); 3].join("+");
     line = format!("  +{}+", line);
 
-    println!("{}", line);
+    writeln!(&mut result, "{}", line).unwrap();
     for (row_index, row) in state.rows.iter().enumerate() {
-        print!("{} ", row);
+        write!(&mut result, "{} ", row).unwrap();
         for (col_index, col) in state.cols.iter().enumerate() {
             if is_grid_boundary(col_index) {
-                print!("|");
+                write!(&mut result, "|").unwrap();
             }
 
             // Would ideally use `{^<number>}` formatting instead of
             // `center_string`, but I don't think you can set the number
             // dynamically...
-            print!(
+            write!(
+                &mut result,
                 "{}",
                 center_string(&grid[&concat(&row, &col)].join(""), width)
-            );
+            )
+            .unwrap();
         }
 
-        print!("|\n");
+        write!(&mut result, "|\n").unwrap();
 
         if (row_index + 1) % 3 == 0 {
-            println!("{}", line);
+            writeln!(&mut result, "{}", line).unwrap();
         }
     }
+
+    result
 }
 
 fn solve(grid: &str, state: &State) -> Option<UnitsForSquare> {
@@ -346,8 +357,6 @@ fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
         .unwrap();
 
     for digit in digits.iter() {
-        // display(&grid, &state);
-        // println!("digging for {}: {}", square, digit);
         let mut new_grid = grid.clone();
         if assign(&mut new_grid, square, digit, state) {
             if let Some(result) = search(&new_grid, state) {
@@ -440,5 +449,35 @@ mod tests {
         assert_eq!(center_string(&"asdf".to_string(), 7), "  asdf ");
         assert_eq!(center_string(&"asdf".to_string(), 10), "   asdf   ");
         assert_eq!(center_string(&"asdf".to_string(), 11), "    asdf   ");
+    }
+
+    #[test]
+    fn test_puzzle() {
+        let state = init_stuff();
+        let result = solve(
+            "003020600900305001001806400008102900700000008006708200002609500800203009005010300",
+            &state,
+        );
+        assert!(result.is_some());
+
+        let expected_output = String::from(
+            r#"    1  2  3   4  5  6   7  8  9
+  +---------+---------+---------+
+A | 4  8  3 | 9  2  1 | 6  5  7 |
+B | 9  6  7 | 3  4  5 | 8  2  1 |
+C | 2  5  1 | 8  7  6 | 4  9  3 |
+  +---------+---------+---------+
+D | 5  4  8 | 1  3  2 | 9  7  6 |
+E | 7  2  9 | 5  6  4 | 1  3  8 |
+F | 1  3  6 | 7  9  8 | 2  4  5 |
+  +---------+---------+---------+
+G | 3  7  2 | 6  8  9 | 5  1  4 |
+H | 8  1  4 | 2  5  3 | 7  6  9 |
+I | 6  9  5 | 4  1  7 | 3  8  2 |
+  +---------+---------+---------+
+"#,
+        );
+
+        assert_eq!(format_grid(&result.unwrap(), &state), expected_output);
     }
 }
