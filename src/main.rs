@@ -10,7 +10,26 @@ use std::time::Instant;
 // - We clone everything for simplicity, could we share elements to be more
 //   efficient?
 // - Use str instead of String when we can.
-// - Use concat! instead of home brewed concat.
+
+//
+// Types
+//
+type Cell = String; // Row-Column id, e.g.: A1.
+type CellValues = Vec<String>; // Possible values for a cell.
+
+type Group = Vec<Cell>; // A row, column or 3x3 sub-grid.
+type Groups = Vec<Group>;
+
+type CellGroups = HashMap<Cell, Groups>;
+type Peers = HashMap<Cell, Vec<Cell>>;
+type Grid = HashMap<Cell, CellValues>;
+
+//
+// Constants
+//
+static DIGITS: [&'static str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+static COLUMNS: [&'static str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+static ROWS: [&'static str; 9] = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
 
 fn main() {
     let filename: String;
@@ -51,33 +70,20 @@ fn parse_args() -> Option<String> {
     return Some(filename.to_string());
 }
 
-// cross("AB", "12") -> ["A1", "A2", "B1", "B2"]
-fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+// cross(["A", "B"], ["1", "2"]) -> ["A1", "A2", "B1", "B2"]
+fn cross(xs: &[&str], ys: &[&str]) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
-    for i in a {
-        for j in b {
-            result.push(concat(i, j));
+    for x in xs {
+        for y in ys {
+            result.push(format!("{}{}", x, y));
         }
     }
 
     result
 }
 
-type Cell = String; // Row-Column id, e.g.: A1.
-type CellValues = Vec<String>; // Possible values for a cell.
-
-type Group = Vec<Cell>; // A row, column or 3x3 sub-grid.
-type Groups = Vec<Group>;
-
-type CellGroups = HashMap<Cell, Groups>;
-type Peers = HashMap<Cell, Vec<Cell>>;
-type Grid = HashMap<Cell, CellValues>;
-
 #[derive(Debug)]
 struct State {
-    digits: Vec<String>,
-    cols: Vec<String>,
-    rows: Vec<String>,
     squares: Vec<Cell>,
 
     // .units["C2"] =
@@ -98,32 +104,21 @@ struct State {
     peers: Peers,
 }
 
-fn concat(s1: &String, s2: &String) -> String {
-    format!("{}{}", s1, s2)
-}
-
-fn str_to_vec(s: &str) -> Vec<String> {
-    s.chars().map(|s| s.to_string()).collect()
-}
-
 fn init_stuff() -> State {
-    let digits: Vec<String> = str_to_vec("123456789");
-    let cols: Vec<String> = str_to_vec("123456789");
-    let rows: Vec<String> = str_to_vec("ABCDEFGHI");
-
-    let squares = cross(&rows, &cols);
+    let squares = cross(&ROWS, &COLUMNS);
 
     // all groups
     let mut groups: Groups = vec![];
-    for c in &cols {
-        groups.push(cross(&rows, &vec![c.clone()]));
+    for c in &COLUMNS {
+        groups.push(cross(&ROWS, &[*c]));
     }
-    for r in &rows {
-        groups.push(cross(&vec![r.clone()], &cols));
+    for r in &ROWS {
+        groups.push(cross(&[*r], &COLUMNS));
     }
-    for rs in vec![str_to_vec("ABC"), str_to_vec("DEF"), str_to_vec("GHI")] {
-        for cs in vec![str_to_vec("123"), str_to_vec("456"), str_to_vec("789")] {
-            groups.push(cross(&rs, &cs));
+
+    for rs in &[["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]] {
+        for cs in &[["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]] {
+            groups.push(cross(rs, cs));
         }
     }
 
@@ -161,9 +156,6 @@ fn init_stuff() -> State {
 
     // done!
     State {
-        digits: digits,
-        cols: cols,
-        rows: rows,
         squares: squares,
         peers: peers,
         cell_groups: cell_groups,
@@ -179,15 +171,17 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<Grid> {
     // Start with all possible values
     let mut result = Grid::new();
 
+    let digits: CellValues = DIGITS.iter().map(|s| s.to_string()).collect();
+
     // Fill grid with all digits first.
     for square in &state.squares {
-        result.insert(square.clone(), state.digits.clone());
+        result.insert(square.clone(), digits.clone());
     }
 
     for (index, square) in state.squares.iter().enumerate() {
         let digit = &grid_str.chars().nth(index).unwrap().to_string();
 
-        if state.digits.contains(digit) {
+        if digits.contains(digit) {
             if !assign(&mut result, square, digit, state) {
                 return None;
             }
@@ -291,11 +285,11 @@ fn format_grid(grid: &Grid, state: &State) -> String {
 
     // number header
     let mut digit_header: String = "".to_string();
-    for (d_index, d) in state.cols.iter().enumerate() {
+    for (d_index, d) in COLUMNS.iter().enumerate() {
         if is_grid_boundary(d_index) {
             digit_header.push(' ');
         }
-        digit_header.push_str(&center_string(&d, width));
+        digit_header.push_str(&center_string(&String::from(*d), width));
     }
     writeln!(&mut result, "  {}", digit_header.trim_end()).unwrap();
 
@@ -303,12 +297,14 @@ fn format_grid(grid: &Grid, state: &State) -> String {
     line = format!("  +{}+", line);
 
     writeln!(&mut result, "{}", line).unwrap();
-    for (row_index, row) in state.rows.iter().enumerate() {
+    for (row_index, row) in ROWS.iter().enumerate() {
         write!(&mut result, "{} ", row).unwrap();
-        for (col_index, col) in state.cols.iter().enumerate() {
+        for (col_index, col) in COLUMNS.iter().enumerate() {
             if is_grid_boundary(col_index) {
                 write!(&mut result, "|").unwrap();
             }
+
+            let cell = format!("{}{}", row.to_string(), col.to_string());
 
             // Would ideally use `{^<number>}` formatting instead of
             // `center_string`, but I don't think you can set the number
@@ -316,7 +312,7 @@ fn format_grid(grid: &Grid, state: &State) -> String {
             write!(
                 &mut result,
                 "{}",
-                center_string(&grid[&concat(&row, &col)].join(""), width)
+                center_string(&grid[&cell].join(""), width)
             )
             .unwrap();
         }
@@ -378,10 +374,7 @@ mod tests {
 
     #[test]
     fn test_cross() {
-        assert_eq!(
-            cross(&str_to_vec("AB"), &str_to_vec("12")),
-            ["A1", "A2", "B1", "B2"]
-        );
+        assert_eq!(cross(&["A", "B"], &["1", "2"]), ["A1", "A2", "B1", "B2"]);
     }
 
     #[test]
