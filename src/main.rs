@@ -50,7 +50,7 @@ fn parse_args() -> Option<String> {
     return Some(filename.to_string());
 }
 
-// ("AB", "12") -> ["A1", "A2", "B1", "B2"]
+// cross("AB", "12") -> ["A1", "A2", "B1", "B2"]
 fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     for i in a {
@@ -76,8 +76,20 @@ struct State {
     cols: Vec<String>,
     rows: Vec<String>,
     squares: Vec<Square>,
-    // DRY?
+
+    // .units["C2"] =
+    // [
+    //     ["A2", "B2", "C2", "D2", "E2", "F2", "G2", "H2", "I2"],
+    //     ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
+    //     ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
+    // ]
     units: UnitlistsForSquare,
+
+    // .peers["C2"] =
+    // [
+    //     "A1", "A2", "A3", "B1", "B2", "B3", "C1", "C3", "C4", "C5", "C6", "C7", "C8", "C9",
+    //     "D2", "E2", "F2", "G2", "H2", "I2"
+    // ]
     peers: UnitsForSquare,
 }
 
@@ -184,6 +196,7 @@ fn parse_grid(grid_str: &str, state: &State) -> Option<UnitsForSquare> {
 fn assign(grid: &mut UnitsForSquare, square: &Square, digit: &String, state: &State) -> Option<()> {
     let mut other_digits = grid[square].clone();
     other_digits.retain(|d| d != digit);
+
     for d in &other_digits {
         if let None = eliminate(grid, square, d, state) {
             return None;
@@ -211,6 +224,7 @@ fn eliminate(
     } else if grid[square].len() == 1 {
         // Found a match, eliminate from peers.
         let d = &grid[square][0].clone();
+        assert!(state.peers[square].len() > 0);
         for s2 in &state.peers[square] {
             if let None = eliminate(grid, s2, d, state) {
                 return None;
@@ -226,9 +240,12 @@ fn eliminate(
                 dplaces.push(s);
             }
         }
+
         if dplaces.len() == 0 {
             return None;
-        } else if dplaces.len() == 1 {
+        }
+
+        if dplaces.len() == 1 {
             // Digit can only be in one place in unit, assign it here.
             if let None = assign(grid, dplaces[0], digit, state) {
                 return None;
@@ -338,6 +355,7 @@ fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
     }
     None
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Tests
 ////////////////////////////////////////////////////////////////////////////////
