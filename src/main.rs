@@ -2,67 +2,85 @@ use std::collections::HashMap;
 
 fn main() {}
 
-fn cross(a: &str, b: &str) -> Vec<String> {
-    let mut result = Vec::new();
-    for i in a.chars() {
-        for j in b.chars() {
-            result.push(vec![i, j].into_iter().collect());
+fn cross(a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+    for i in a {
+        for j in b {
+            let mut new_str: String = i.clone();
+            new_str.push_str(j);
+            result.push(new_str);
         }
     }
 
     result
 }
 
-const DIGITS: &str = "123456789";
-const COLS: &str = DIGITS;
-const ROWS: &str = "ABCDEFGHI";
-
 // TODO: USE THIS?
 type Units = Vec<String>;
 type UnitsList = Vec<Units>;
-type UnitsForSquare = HashMap<String, UnitsList>;
-type PeersForSquare = HashMap<String, Units>;
+type UnitlistsForSquare = HashMap<String, UnitsList>;
+type UnitsForSquare = HashMap<String, Units>;
 
 #[derive(Debug)]
 struct State {
+    digits: Vec<String>,
+    cols: Vec<String>,
+    rows: Vec<String>,
     squares: Vec<String>,
     unitlist: UnitsList,
-    units: UnitsForSquare,
-    peers: PeersForSquare,
+    units: UnitlistsForSquare,
+    peers: UnitsForSquare,
+}
+
+fn string_to_vec(s: &str) -> Vec<String> {
+    s.chars().map(|s| s.to_string()).collect()
 }
 
 fn init_stuff() -> State {
-    let squares = cross(ROWS, COLS);
+    let digits: Vec<String> = string_to_vec("123456789");
+    let cols: Vec<String> = string_to_vec("123456789");
+    let rows: Vec<String> = string_to_vec("ABCDEFGHI");
+
+    let squares = cross(&rows, &cols);
 
     // unitlist
     let mut unitlist: UnitsList = vec![];
-    for c in COLS.chars() {
-        unitlist.push(cross(ROWS, &c.to_string()));
+    for c in &cols {
+        unitlist.push(cross(&rows, &vec![c.clone()]));
     }
-    for r in ROWS.chars() {
-        unitlist.push(cross(&r.to_string(), COLS));
+    for r in &rows {
+        unitlist.push(cross(&vec![r.clone()], &cols));
     }
-    for rs in vec!["ABC", "DEF", "GHI"] {
-        for cs in vec!["123", "456", "789"] {
-            unitlist.push(cross(rs, cs));
+    for rs in vec![
+        string_to_vec("ABC"),
+        string_to_vec("DEF"),
+        string_to_vec("GHI"),
+    ] {
+        for cs in vec![
+            string_to_vec("123"),
+            string_to_vec("456"),
+            string_to_vec("789"),
+        ] {
+            unitlist.push(cross(&rs, &cs));
         }
     }
 
     // units
-    let mut units: UnitsForSquare = HashMap::new();
+    let mut units: UnitlistsForSquare = HashMap::new();
 
     for s in &squares {
         for u in &unitlist {
             if u.contains(s) {
-                let mut new_units = units.get(s).cloned().unwrap_or(vec![]);
-                new_units.push(u.to_vec());
-                units.insert(s.to_string(), new_units);
+                units
+                    .entry(s.clone())
+                    .or_insert_with(Vec::new)
+                    .push(u.clone());
             }
         }
     }
 
     //              for s in squares)
-    let mut peers = PeersForSquare::new();
+    let mut peers = UnitsForSquare::new();
     for s in &squares {
         // flatten
         let mut new_units: Units = units
@@ -81,12 +99,27 @@ fn init_stuff() -> State {
 
     // done!
     State {
+        // DRY
+        digits: digits,
+        cols: cols,
+        rows: rows,
         squares: squares,
         unitlist: unitlist,
         peers: peers,
         units: units,
     }
 }
+
+// fn parse_grid(grid: String, state: State) -> UnitsForSquare {
+//     // Start with all possible values
+//     let mut values = UnitsForSquare::new();
+
+//     for s in state.squares {
+//         values.insert(s, DIGITS);
+//     }
+
+//     values
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Tests
@@ -99,17 +132,20 @@ mod tests {
 
     #[test]
     fn test_cross() {
-        assert_eq!(cross("AB", "12"), ["A1", "A2", "B1", "B2"]);
+        assert_eq!(
+            cross(&string_to_vec("AB"), &string_to_vec("12")),
+            ["A1", "A2", "B1", "B2"]
+        );
     }
 
     #[test]
-    fn test_base() {
+    fn test_constants() {
         let game = init_stuff();
 
-        dbg!(&game);
         assert_eq!(game.squares.len(), 81);
         assert_eq!(game.unitlist.len(), 27);
         for s in game.squares {
+            dbg!(&game.unitlist);
             assert_eq!(game.units[&s].len(), 3);
             assert_eq!(game.peers[&s].len(), 20);
         }
