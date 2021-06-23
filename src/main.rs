@@ -4,10 +4,12 @@ use std::fs;
 use std::time::Instant;
 
 // TODO:
-//     - Make state singleton
+//     - Make state singleton.
 //     - Make search multithread?
 //     - We clone everything for simplicity, could we share elements to be more
 //       efficient?
+//     - Type names are confusing.
+//     - Use str instead of String when we can.
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -314,13 +316,10 @@ fn search(grid: &UnitsForSquare, state: &State) -> Option<UnitsForSquare> {
         // display(&grid, &state);
         // println!("digging for {}: {}", square, digit);
         let mut new_grid = grid.clone();
-        match assign(&mut new_grid, square, digit, state) {
-            Some(()) => {
-                if let Some(result) = search(&new_grid, state) {
-                    return Some(result);
-                }
+        if let Some(()) = assign(&mut new_grid, square, digit, state) {
+            if let Some(result) = search(&new_grid, state) {
+                return Some(result);
             }
-            None => (),
         }
     }
     None
