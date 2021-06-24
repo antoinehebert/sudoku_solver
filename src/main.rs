@@ -201,14 +201,9 @@ fn assign(grid: &mut Grid, cell: &Cell, digit: u8, state: &State) -> bool {
     let mut other_digits = grid[cell].clone();
     other_digits.retain(|&d| d != digit);
 
-    if other_digits
+    other_digits
         .iter()
         .all(|&d| eliminate(grid, cell, d, state))
-    {
-        true
-    } else {
-        false
-    }
 }
 
 /// Eliminate `digit` from `grid[square]` and propagate.
@@ -372,7 +367,7 @@ fn search(grid: &Grid, state: &State) -> Option<Grid> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Tests
+// Tests
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
