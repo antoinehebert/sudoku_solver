@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::env;
 use std::fmt::Write;
@@ -356,16 +357,15 @@ fn search(grid: &Grid, state: &State) -> Option<Grid> {
         .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
         .unwrap();
 
-    for &digit in digits.iter() {
+    return digits.par_iter().find_map_first(|&digit| {
         let mut new_grid = grid.clone();
         if assign(&mut new_grid, square, digit, state) {
-            if let Some(result) = search(&new_grid, state) {
-                return Some(result);
+            if let Some(search_result) = search(&new_grid, state) {
+                return Some(search_result);
             }
         }
-    }
-
-    None
+        return None;
+    });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
