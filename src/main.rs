@@ -39,7 +39,9 @@ fn main() {
         Some(fname) => filename = fname,
     };
 
-    let problem = fs::read_to_string(filename).expect("Something went wrong reading the file.");
+    let mut problem = fs::read_to_string(filename).expect("Something went wrong reading the file.");
+    // remove separators and new lines from the string.
+    problem.retain(|c| c != '\r' && c != '\n' && c != ' ' && c != '|' && c != '-' && c != '+');
 
     let start = Instant::now();
     let state = init_stuff();
