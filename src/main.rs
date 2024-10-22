@@ -3,6 +3,7 @@ use std::env;
 use std::fmt::Write;
 use std::fs;
 use std::time::Instant;
+use rayon::prelude::*; // Pef5e
 
 // TODO:
 // - Make state singleton or global? Doesn't make sense to pass this down all the time.
@@ -356,16 +357,14 @@ fn search(grid: &Grid, state: &State) -> Option<Grid> {
         .min_by(|(_k1, v1), (_k2, v2)| v1.len().cmp(&v2.len()))
         .unwrap();
 
-    for &digit in digits.iter() {
+    digits.par_iter().find_map_any(|&digit| {
         let mut new_grid = grid.clone();
         if assign(&mut new_grid, square, digit, state) {
-            if let Some(result) = search(&new_grid, state) {
-                return Some(result);
-            }
+            search(&new_grid, state)
+        } else {
+            None
         }
-    }
-
-    None
+    })
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,6 +449,36 @@ mod tests {
 
     #[test]
     fn test_puzzle() {
+        let state = init_stuff();
+        let result = solve(
+            "003020600900305001001806400008102900700000008006708200002609500800203009005010300",
+            &state,
+        );
+        assert!(result.is_some());
+
+        let expected_output = String::from(
+            r#"    1  2  3   4  5  6   7  8  9
+  +---------+---------+---------+
+A | 4  8  3 | 9  2  1 | 6  5  7 |
+B | 9  6  7 | 3  4  5 | 8  2  1 |
+C | 2  5  1 | 8  7  6 | 4  9  3 |
+  +---------+---------+---------+
+D | 5  4  8 | 1  3  2 | 9  7  6 |
+E | 7  2  9 | 5  6  4 | 1  3  8 |
+F | 1  3  6 | 7  9  8 | 2  4  5 |
+  +---------+---------+---------+
+G | 3  7  2 | 6  8  9 | 5  1  4 |
+H | 8  1  4 | 2  5  3 | 7  6  9 |
+I | 6  9  5 | 4  1  7 | 3  8  2 |
+  +---------+---------+---------+
+"#,
+        );
+
+        assert_eq!(format_grid(&result.unwrap(), &state), expected_output);
+    }
+
+    #[test]
+    fn test_parallel_search() {
         let state = init_stuff();
         let result = solve(
             "003020600900305001001806400008102900700000008006708200002609500800203009005010300",
